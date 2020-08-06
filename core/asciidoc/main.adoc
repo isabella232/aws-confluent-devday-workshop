@@ -1216,7 +1216,7 @@ CREATE SINK CONNECTOR {dc}_s3_sink WITH (
   's3.part.size'='5242880',
   'aws.accessKeyId'='${file:/secrets.properties:AWS_ACCESS_KEY_ID}',
   'aws.secretKey'='${file:/secrets.properties:AWS_SECRET_ACCESS_KEY}',
-  'flush.size'= '50',
+  'flush.size'= '30',
   'storage.class'= 'io.confluent.connect.s3.storage.S3Storage',
   'format.class'= 'io.confluent.connect.s3.format.avro.AvroFormat',
   'partitioner.class'= 'io.confluent.connect.storage.partitioner.DefaultPartitioner',
