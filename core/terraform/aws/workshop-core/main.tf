@@ -49,6 +49,10 @@ EOF
   tags = {
     Name = "${var.name}-${count.index}"
   }
+
+  root_block_device {
+    volume_size = 100
+  }
 }
 
 resource "aws_security_group" "instance" {
