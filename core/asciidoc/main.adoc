@@ -395,6 +395,8 @@ Confirm that Replicator is in a `RUNNING` state
 curl -s localhost:18084/connectors/replicator-{dc}-to-ccloud/status | jq
 ----
 
+You should see that the connector's state is `RUNNING`.
+
 [source,subs="attributes"]]
 ----
 {
@@ -442,90 +444,64 @@ image::./images/c3_72.png[]
 
 == Lab 5: Stream Data to AWS Redshift
 
-We can use the JDBC Sink Connector to stream changes from our topics to AWS Redshift.
+We can use the JDBC Sink Connector to stream changes from our Confluent Cloud topics to AWS Redshift.
 
 image::./images/7_cloud_services.png[]
 
-To do this we'll use the ksqlDB CLI to create the connector.
+Run the following from the command line to create the JDBC sink Connector instance, this connector will sink events from Confluent Cloud to AWS Redshift.
 
 [IMPORTANT]
 ====
-Start a ksqlDB CLI session
 [source,subs=attributes]
-----
-docker exec -it ksqldb-cli ksql http://ksqldb-server-ccloud:8088
-----
+
+curl -i -X POST -H "Accept:application/json" \
+    -H  "Content-Type:application/json" http://localhost:18084/connectors/ \
+    -d '{
+        "name": "{dc}_redshift_sink",
+        "config": {
+            "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+            "topics": "{dc}_sales_orders,{dc}_sales_order_details,{dc}_purchase_orders,{dc}_purchase_order_details,{dc}_products,{dc}_customers,{dc}_suppliers",
+            "connection.url": "${file:/secrets.properties:RS_JDBC_URL}",
+            "connection.user": "${file:/secrets.properties:RS_USERNAME}",
+            "connection.password": "${file:/secrets.properties:RS_PASSWORD}",
+            "insert.mode": "INSERT",
+            "batch.size": "15",
+            "auto.create": "true",
+            "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+            "dialect.name": "PostgreSqlDatabaseDialect"
+        }
+    }'
 ====
 
-And run the following `CREATE SINK CONNECTOR` command. This will create a connector that will stream the following topics to AWS Redshift:-
+Verify that the JDBC sink connector is in a `RUNNING` state.
 
-[source,subs=attributes]
+[source,subs="attributes"]
 ----
-{dc}_sales_orders
-{dc}_sales_order_details
-{dc}_purchase_orders
-{dc}_purchase_order_details
-{dc}_products
-{dc}_customers
-{dc}_suppliers 
+curl -s localhost:18084/connectors/{dc}_redshift_sink/status | jq
 ----
 
-[IMPORTANT]
-====
+You should see that the connector's state is `RUNNING`
 
-[source,subs=attributes]
-CREATE SINK CONNECTOR {dc}_redshift_sink WITH (  
-  'connector.class'='io.confluent.connect.jdbc.JdbcSinkConnector',
-  'topics'='{dc}_sales_orders,{dc}_sales_order_details,{dc}_purchase_orders,{dc}_purchase_order_details,{dc}_products,{dc}_customers,{dc}_suppliers',
-  'connection.url'='${file:/secrets.properties:RS_JDBC_URL}',
-  'connection.user'='${file:/secrets.properties:RS_USERNAME}',
-  'connection.password'='${file:/secrets.properties:RS_PASSWORD}',
-  'insert.mode'='INSERT',
-  'batch.size'='20',
-  'auto.create'='true',
-  'key.converter'='org.apache.kafka.connect.storage.StringConverter',
-  'dialect.name'='PostgreSqlDatabaseDialect'
-);
-====
-
-We can list our current connectors using the following command
-
-[source,subs=attributes]
+[source,subs="attributes"]]
 ----
-show connectors;
+{
+  "name": "{dc}_redshift_sink",
+  "connector": {
+    "state": "RUNNING",
+    "worker_id": "kafka-connect-ccloud:18084"
+  },
+  "tasks": [
+    {
+      "id": 0,
+      "state": "RUNNING",
+      "worker_id": "kafka-connect-ccloud:18084"
+    }
+  ],
+  "type": "sink"
+}
 ----
 
-[source,subs=attributes]
-----
- Connector Name            | Type   | Class
-------------------------------------------------------------------------------------------------
- {dc}_REDSHIFT_SINK        | SINK   | io.confluent.connect.jdbc.JdbcSinkConnector
- replicator-{dc}-to-ccloud | SOURCE | io.confluent.connect.replicator.ReplicatorSourceConnector
-------------------------------------------------------------------------------------------------
-----
-
-We can also describe a connector and view its status using the describe connector statement.
-
-[source,subs=attributes]
-----
-describe connector {dc}_redshift_sink;
-----
-
-[source,subs=attributes]
-----
-Name                 : {dc}_REDSHIFT_SINK
-Class                : io.confluent.connect.jdbc.JdbcSinkConnector
-Type                 : sink
-State                : RUNNING
-WorkerId             : kafka-connect:18084
-
- Task ID | State   | Error Trace
----------------------------------
- 0       | RUNNING |
----------------------------------
-----
-
-Depending on who's hosting the workshop, you may or may not have access to the AWS account where the Redshift cluster is hosted.
+Depending on who's hosting the workshop, you may or may not have access to the AWS account where the Redshift cluster is hosted. Ask your instructor to verify that your data is arriving in AWS Redshift.
 
 
 == Lab 6: Creating a ksqlDB Application
@@ -1242,12 +1218,12 @@ show connectors;
 
 [source,bash,subs=attributes]
 ----
- Connector Name            | Type   | Class
-------------------------------------------------------------------------------------------------
- {dc}_S3_SINK              | SINK   | io.confluent.connect.s3.S3SinkConnector
- replicator-{dc}-to-ccloud | SOURCE | io.confluent.connect.replicator.ReplicatorSourceConnector
-------------------------------------------------------------------------------------------------
-
+ Connector Name            | Type   | Class                                                     
+-------------------------------------------------------------------------------------------------
+ replicator-{dc}-to-ccloud | SOURCE | io.confluent.connect.replicator.ReplicatorSourceConnector 
+ {dc}_S3_SINK              | SINK   | io.confluent.connect.s3.S3SinkConnector                   
+ {dc}_redshift_sink        | SINK   | io.confluent.connect.jdbc.JdbcSinkConnector               
+-------------------------------------------------------------------------------------------------
 ----
 
 We can also describe a connector and view its status using the `describe connector` statement.
@@ -1270,9 +1246,7 @@ WorkerId             : kafka-connect:18084
 ---------------------------------
 ----
 
-Depending on who's hosting the workshop, you may or may not have access to the AWS account where the S3 bucket is hosted.
-
-
+Depending on who's hosting the workshop, you may or may not have access to the AWS account where the S3 bucket is hosted. Ask your instructor to verify that your data is arriving in AWS S3.
 
 == Lab 11: Streaming Current Stock Levels
 
