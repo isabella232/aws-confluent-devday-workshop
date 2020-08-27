@@ -4,9 +4,9 @@ resource "aws_redshift_cluster" "instance" {
   master_username     = var.rs_username
   master_password     = var.rs_password
   node_type           = "dc2.large"
-  cluster_type        = "single-node"
+  cluster_type        = "multi-node"
   port                = 5539
-  number_of_nodes     = 1
+  number_of_nodes     = 4
   skip_final_snapshot = true
   publicly_accessible = false
   vpc_security_group_ids = [module.workshop-core.security_group_id]
